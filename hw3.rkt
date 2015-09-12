@@ -6,11 +6,14 @@
   [closV (arg : symbol)
          (body : ExprC)
          (env : Env)]
-	[boolV (b : boolean)])
+	[boolV (b : boolean)]
+	[thunkV (body : ExprC)])
 
 (define-type ExprC
   [numC (n : number)]
 	[boolC (b : boolean)]
+	[delayC (body : ExprC)]
+	[forceC (body : ExprC)]
   [idC (s : symbol)]
   [plusC (l : ExprC) 
          (r : ExprC)]
@@ -47,6 +50,10 @@
     [(s-exp-match? `NUMBER s) (numC (s-exp->number s))]
 		[(s-exp-match? `true s) (boolC #t)]
 		[(s-exp-match? `false s) (boolC #f)]
+		[(s-exp-match? '{delay ANY})
+			(delayC (parse (second (s-exp->list s))))]
+		[(s-exp-match? '{force ANY})
+			(forceC (parse (second (s-exp->list s))))]
     [(s-exp-match? `SYMBOL s) (idC (s-exp->symbol s))]
     [(s-exp-match? '{+ ANY ANY} s)
      (plusC (parse (second (s-exp->list s)))
@@ -82,6 +89,10 @@
         (numC 2))
   (test (parse `x) ; note: backquote instead of normal quote
         (idC 'x))
+	(test (parse '{delay {+ 1 {lambda {x} x}}})
+				(delayC (plusC (numC 1) (lamC 'x 'x))))
+	(test (parse '{force {delay {+ 1 {lambda {x} x}}}})
+				(forceC (plusC (numC 1) (lamC 'x 'x))))
   (test (parse '{+ 2 1})
         (plusC (numC 2) (numC 1)))
   (test (parse '{* 3 4})
@@ -149,6 +160,27 @@
         (numV 9))
   (test (interp (parse '{+ 2 1}) mt-env)
         (numV 3))
+	(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
+				(???))
+	(test/exn (interp (parse '{force {delay {+ 1 {lambda {x} x}}}}) mt-env)
+				"not a number")
+	(test (interp (parse '{let {[ok {delay {+ 1 2}}]}
+													{let {[bad {delay {+ 1 false}}]}
+														{force ok}}}) mt-env)
+				(numV 3))
+	(test/exn (interp (parse '{let {[ok {delay {+ 1 2}}]}
+															{let {[bad {delay {+ 1 false}}]}
+																{force bad}}}) mt-env)
+				"not a number")
+	(test/exn (interp (parse '{force 1}) mt-env)
+				"not a thunk")
+	(test (interp (parse '{force {if {= 8 8} {delay 7} {delay 9}}}) mt-env)
+				(interp (parse '7) mt-env))
+	(test (interp (parse '{let {[d {let {[y 8]}
+													{delay {+ y 7}}}]}
+												{let {[y 9]}
+													{force d}}}) mt-env)
+				(interp (parse '15) mt-env))
   (test (interp (parse '{* 2 1}) mt-env)
         (numV 2))
   (test (interp (parse '{+ {* 2 3} {+ 5 8}})
