@@ -12,7 +12,6 @@
 (define-type ExprC
   [numC (n : number)]
 	[boolC (b : boolean)]
-	[thunkC (body : ExprC)]
 	[delayC (body : ExprC)]
 	[forceC (body : ExprC)]
   [idC (s : symbol)]
@@ -51,9 +50,9 @@
     [(s-exp-match? `NUMBER s) (numC (s-exp->number s))]
 		[(s-exp-match? `true s) (boolC #t)]
 		[(s-exp-match? `false s) (boolC #f)]
-		[(s-exp-match? '{delay ANY})
+		[(s-exp-match? '{delay ANY} s)
 			(delayC (parse (second (s-exp->list s))))]
-		[(s-exp-match? '{force ANY})
+		[(s-exp-match? '{force ANY} s)
 			(forceC (parse (second (s-exp->list s))))]
     [(s-exp-match? `SYMBOL s) (idC (s-exp->symbol s))]
     [(s-exp-match? '{+ ANY ANY} s)
@@ -91,9 +90,9 @@
   (test (parse `x) ; note: backquote instead of normal quote
         (idC 'x))
 	(test (parse '{delay {+ 1 {lambda {x} x}}})
-				(delayC (plusC (numC 1) (lamC 'x 'x))))
+				(delayC (plusC (numC 1) (lamC 'x (idC 'x)))))
 	(test (parse '{force {delay {+ 1 {lambda {x} x}}}})
-				(forceC (plusC (numC 1) (lamC 'x 'x))))
+		(forceC (delayC (plusC (numC 1) (lamC 'x (idC 'x))))))
   (test (parse '{+ 2 1})
         (plusC (numC 2) (numC 1)))
   (test (parse '{* 3 4})
@@ -163,6 +162,7 @@
         (numV 9))
   (test (interp (parse '{+ 2 1}) mt-env)
         (numV 3))
+	;; delay/force
 	(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
 				(thunkV (parse '{+ 1 {lambda {x} x}})))
 	(test/exn (interp (parse '{force {delay {+ 1 {lambda {x} x}}}}) mt-env)
@@ -184,6 +184,7 @@
 												{let {[y 9]}
 													{force d}}}) mt-env)
 				(interp (parse '15) mt-env))
+	;; next
   (test (interp (parse '{* 2 1}) mt-env)
         (numV 2))
   (test (interp (parse '{+ {* 2 3} {+ 5 8}})
