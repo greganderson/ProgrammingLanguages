@@ -7,7 +7,8 @@
          (body : ExprC)
          (env : Env)]
 	[boolV (b : boolean)]
-	[thunkV (body : ExprC)])
+	[thunkV (body : ExprC)
+					(env : Env)])
 
 (define-type ExprC
   [numC (n : number)]
@@ -125,8 +126,11 @@
   (type-case ExprC a
     [numC (n) (numV n)]
 		[boolC (b) (boolV b)]
-		[delayC (body) (thunkV body)]
-		[forceC (body) (interp body env)]
+		[delayC (body) (thunkV body env)]
+		[forceC (thunk-expr)
+			(type-case Value (interp thunk-expr env)
+				[thunkV (body e) (interp body e)]
+				[else (error 'interp "not a thunk")])]
     [idC (s) (lookup s env)]
     [plusC (l r) (num+ (interp l env) (interp r env))]
     [multC (l r) (num* (interp l env) (interp r env))]
@@ -163,8 +167,10 @@
   (test (interp (parse '{+ 2 1}) mt-env)
         (numV 3))
 	;; delay/force
+	;(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
+				;(thunkV (parse '{+ 1 {lambda {x} x}})))
 	(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
-				(thunkV (parse '{+ 1 {lambda {x} x}})))
+				(thunkV (plusC (numC 1) (lamC 'x (idC 'x))) mt-env))
 	(test/exn (interp (parse '{force {delay {+ 1 {lambda {x} x}}}}) mt-env)
 				"not a number")
 	(test (interp (parse '{let {[ok {delay {+ 1 2}}]}
