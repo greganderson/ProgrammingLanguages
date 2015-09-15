@@ -6,15 +6,15 @@
   [closV (arg : symbol)
          (body : ExprC)
          (env : Env)]
-	[boolV (b : boolean)]
-	[thunkV (body : ExprC)
-					(env : Env)])
+  [boolV (b : boolean)]
+  [thunkV (body : ExprC)
+          (env : Env)])
 
 (define-type ExprC
   [numC (n : number)]
-	[boolC (b : boolean)]
-	[delayC (body : ExprC)]
-	[forceC (body : ExprC)]
+  [boolC (b : boolean)]
+  [delayC (body : ExprC)]
+  [forceC (body : ExprC)]
   [idC (s : symbol)]
   [plusC (l : ExprC) 
          (r : ExprC)]
@@ -25,11 +25,11 @@
         (body : ExprC)]
   [lamC (n : symbol)
         (body : ExprC)]
-	[equalC	(lhs : ExprC)
-					(rhs : ExprC)]
-	[ifC	(test : ExprC)
-				(body1 : ExprC)
-				(body2 : ExprC)]
+  [equalC	(lhs : ExprC)
+           (rhs : ExprC)]
+  [ifC	(test : ExprC)
+           (body1 : ExprC)
+           (body2 : ExprC)]
   [appC (fun : ExprC)
         (arg : ExprC)])
 
@@ -49,12 +49,12 @@
 (define (parse [s : s-expression]) : ExprC
   (cond
     [(s-exp-match? `NUMBER s) (numC (s-exp->number s))]
-		[(s-exp-match? `true s) (boolC #t)]
-		[(s-exp-match? `false s) (boolC #f)]
-		[(s-exp-match? '{delay ANY} s)
-			(delayC (parse (second (s-exp->list s))))]
-		[(s-exp-match? '{force ANY} s)
-			(forceC (parse (second (s-exp->list s))))]
+    [(s-exp-match? `true s) (boolC #t)]
+    [(s-exp-match? `false s) (boolC #f)]
+    [(s-exp-match? '{delay ANY} s)
+     (delayC (parse (second (s-exp->list s))))]
+    [(s-exp-match? '{force ANY} s)
+     (forceC (parse (second (s-exp->list s))))]
     [(s-exp-match? `SYMBOL s) (idC (s-exp->symbol s))]
     [(s-exp-match? '{+ ANY ANY} s)
      (plusC (parse (second (s-exp->list s)))
@@ -73,13 +73,13 @@
      (lamC (s-exp->symbol (first (s-exp->list 
                                   (second (s-exp->list s)))))
            (parse (third (s-exp->list s))))]
-		[(s-exp-match? '{= ANY ANY} s)
-			(equalC (parse (second (s-exp->list s)))
-							(parse (third (s-exp->list s))))]
-		[(s-exp-match? '{if ANY ANY ANY} s)
-			(ifC	(parse (second (s-exp->list s)))
-						(parse (third (s-exp->list s)))
-						(parse (fourth (s-exp->list s))))]
+    [(s-exp-match? '{= ANY ANY} s)
+     (equalC (parse (second (s-exp->list s)))
+             (parse (third (s-exp->list s))))]
+    [(s-exp-match? '{if ANY ANY ANY} s)
+     (ifC	(parse (second (s-exp->list s)))
+           (parse (third (s-exp->list s)))
+           (parse (fourth (s-exp->list s))))]
     [(s-exp-match? '{ANY ANY} s)
      (appC (parse (first (s-exp->list s)))
            (parse (second (s-exp->list s))))]
@@ -90,10 +90,10 @@
         (numC 2))
   (test (parse `x) ; note: backquote instead of normal quote
         (idC 'x))
-	(test (parse '{delay {+ 1 {lambda {x} x}}})
-				(delayC (plusC (numC 1) (lamC 'x (idC 'x)))))
-	(test (parse '{force {delay {+ 1 {lambda {x} x}}}})
-		(forceC (delayC (plusC (numC 1) (lamC 'x (idC 'x))))))
+  (test (parse '{delay {+ 1 {lambda {x} x}}})
+        (delayC (plusC (numC 1) (lamC 'x (idC 'x)))))
+  (test (parse '{force {delay {+ 1 {lambda {x} x}}}})
+        (forceC (delayC (plusC (numC 1) (lamC 'x (idC 'x))))))
   (test (parse '{+ 2 1})
         (plusC (numC 2) (numC 1)))
   (test (parse '{* 3 4})
@@ -107,14 +107,14 @@
               (idC 'y)))
   (test (parse '{lambda {x} 9})
         (lamC 'x (numC 9)))
-	(test (parse '{= 8 8})
-			 (equalC (numC 8) (numC 8)))
-	(test (parse '{= {+ 4 4} 8})
-			 (equalC (plusC (numC 4) (numC 4)) (numC 8)))
-	(test (parse '{if {= 8 8} 0 1})
-				(ifC (equalC (numC 8) (numC 8)) (numC 0) (numC 1)))
-	(test (parse '{if true 8 9})
-				(ifC (boolC true) (numC 8) (numC 9)))
+  (test (parse '{= 8 8})
+        (equalC (numC 8) (numC 8)))
+  (test (parse '{= {+ 4 4} 8})
+        (equalC (plusC (numC 4) (numC 4)) (numC 8)))
+  (test (parse '{if {= 8 8} 0 1})
+        (ifC (equalC (numC 8) (numC 8)) (numC 0) (numC 1)))
+  (test (parse '{if true 8 9})
+        (ifC (boolC true) (numC 8) (numC 9)))
   (test (parse '{double 9})
         (appC (idC 'double) (numC 9)))
   (test/exn (parse '{{+ 1 2}})
@@ -125,12 +125,12 @@
 (define (interp [a : ExprC] [env : Env]) : Value
   (type-case ExprC a
     [numC (n) (numV n)]
-		[boolC (b) (boolV b)]
-		[delayC (body) (thunkV body env)]
-		[forceC (thunk-expr)
-			(type-case Value (interp thunk-expr env)
-				[thunkV (body e) (interp body e)]
-				[else (error 'interp "not a thunk")])]
+    [boolC (b) (boolV b)]
+    [delayC (body) (thunkV body env)]
+    [forceC (thunk-expr)
+            (type-case Value (interp thunk-expr env)
+              [thunkV (body e) (interp body e)]
+              [else (error 'interp "not a thunk")])]
     [idC (s) (lookup s env)]
     [plusC (l r) (num+ (interp l env) (interp r env))]
     [multC (l r) (num* (interp l env) (interp r env))]
@@ -141,14 +141,14 @@
                    env))]
     [lamC (n body)
           (closV n body env)]
-		[equalC (l r) (num= (interp l env) (interp r env))]
-		[ifC (t b1 b2)
-			(type-case Value (interp t env)
-				[boolV (v)
-					(if v (interp b1 env) (interp b2 env))]
-			(else (error 'interp "not a boolean")))]
+    [equalC (l r) (num= (interp l env) (interp r env))]
+    [ifC (t b1 b2)
+         (type-case Value (interp t env)
+           [boolV (v)
+                  (if v (interp b1 env) (interp b2 env))]
+           (else (error 'interp "not a boolean")))]
     [appC (fun arg) (type-case Value (interp fun env)
-                     [closV (n body c-env)
+                      [closV (n body c-env)
                              (interp body
                                      (extend-env
                                       (bind n
@@ -166,31 +166,31 @@
         (numV 9))
   (test (interp (parse '{+ 2 1}) mt-env)
         (numV 3))
-	;; delay/force
-	;(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
-				;(thunkV (parse '{+ 1 {lambda {x} x}})))
-	(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
-				(thunkV (plusC (numC 1) (lamC 'x (idC 'x))) mt-env))
-	(test/exn (interp (parse '{force {delay {+ 1 {lambda {x} x}}}}) mt-env)
-				"not a number")
-	(test (interp (parse '{let {[ok {delay {+ 1 2}}]}
-													{let {[bad {delay {+ 1 false}}]}
-														{force ok}}}) mt-env)
-				(numV 3))
-	(test/exn (interp (parse '{let {[ok {delay {+ 1 2}}]}
-															{let {[bad {delay {+ 1 false}}]}
-																{force bad}}}) mt-env)
-				"not a number")
-	(test/exn (interp (parse '{force 1}) mt-env)
-				"not a thunk")
-	(test (interp (parse '{force {if {= 8 8} {delay 7} {delay 9}}}) mt-env)
-				(interp (parse '7) mt-env))
-	(test (interp (parse '{let {[d {let {[y 8]}
-													{delay {+ y 7}}}]}
-												{let {[y 9]}
-													{force d}}}) mt-env)
-				(interp (parse '15) mt-env))
-	;; next
+  ;; delay/force
+  ;(test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
+  ;(thunkV (parse '{+ 1 {lambda {x} x}})))
+  (test (interp (parse '{delay {+ 1 {lambda {x} x}}}) mt-env)
+        (thunkV (plusC (numC 1) (lamC 'x (idC 'x))) mt-env))
+  (test/exn (interp (parse '{force {delay {+ 1 {lambda {x} x}}}}) mt-env)
+            "not a number")
+  (test (interp (parse '{let {[ok {delay {+ 1 2}}]}
+                          {let {[bad {delay {+ 1 false}}]}
+                            {force ok}}}) mt-env)
+        (numV 3))
+  (test/exn (interp (parse '{let {[ok {delay {+ 1 2}}]}
+                              {let {[bad {delay {+ 1 false}}]}
+                                {force bad}}}) mt-env)
+            "not a number")
+  (test/exn (interp (parse '{force 1}) mt-env)
+            "not a thunk")
+  (test (interp (parse '{force {if {= 8 8} {delay 7} {delay 9}}}) mt-env)
+        (interp (parse '7) mt-env))
+  (test (interp (parse '{let {[d {let {[y 8]}
+                                   {delay {+ y 7}}}]}
+                          {let {[y 9]}
+                            {force d}}}) mt-env)
+        (interp (parse '15) mt-env))
+  ;; next
   (test (interp (parse '{* 2 1}) mt-env)
         (numV 2))
   (test (interp (parse '{+ {* 2 3} {+ 5 8}})
@@ -216,21 +216,21 @@
   (test (interp (parse '{{lambda {x} {+ x x}} 8})
                 mt-env)
         (numV 16))
-	(test (interp (parse '{if {= 2 {+ 1 1}} 7 8})
-									mt-env)
-				(interp (parse '7)
-									mt-env))
-	(test (interp (parse '{if false {+ 1 {lambda {x} x}} 9})
-									mt-env)
-				(interp (parse '9)
-									mt-env))
-	(test (interp (parse '{if true 10 {+ 1 {lambda {x} x}}})
-									mt-env)
-				(interp (parse '10)
-									mt-env))
-	(test/exn (interp (parse '{if 1 2 3})
-									mt-env)
-		"not a boolean")
+  (test (interp (parse '{if {= 2 {+ 1 1}} 7 8})
+                mt-env)
+        (interp (parse '7)
+                mt-env))
+  (test (interp (parse '{if false {+ 1 {lambda {x} x}} 9})
+                mt-env)
+        (interp (parse '9)
+                mt-env))
+  (test (interp (parse '{if true 10 {+ 1 {lambda {x} x}}})
+                mt-env)
+        (interp (parse '10)
+                mt-env))
+  (test/exn (interp (parse '{if 1 2 3})
+                    mt-env)
+            "not a boolean")
   (test/exn (interp (parse '{1 2}) mt-env)
             "not a function")
   (test/exn (interp (parse '{+ 1 {lambda {x} x}}) mt-env)
@@ -240,7 +240,7 @@
                                 {bad 2}}})
                     mt-env)
             "free variable")
-
+  
   #;
   (time (interp (parse '{let {[x2 {lambda {n} {+ n n}}]}
                           {let {[x4 {lambda {n} {x2 {x2 n}}}]}
@@ -253,40 +253,38 @@
 ;; num+ and num* ----------------------------------------
 (define (num-op [op : (number number -> number)] [l : Value] [r : Value]) : Value
   (cond
-   [(and (numV? l) (numV? r))
-    (numV (op (numV-n l) (numV-n r)))]
-   [else
-    (error 'interp "not a number")]))
+    [(and (numV? l) (numV? r))
+     (numV (op (numV-n l) (numV-n r)))]
+    [else
+     (error 'interp "not a number")]))
 (define (num+ [l : Value] [r : Value]) : Value
   (num-op + l r))
 (define (num* [l : Value] [r : Value]) : Value
   (num-op * l r))
 
 (define (num= [l : Value] [r : Value]) : Value
-	(cond
-		[(and (numV? l) (numV? r))
-			(boolV (= (numV-n l) (numV-n r)))]
-		[else
-			(error 'interp "not a number")]))
+  (cond
+    [(and (numV? l) (numV? r))
+     (boolV (= (numV-n l) (numV-n r)))]))
 
 (module+ test
   (test (num+ (numV 1) (numV 2))
         (numV 3))
   (test (num* (numV 2) (numV 3))
         (numV 6))
-	(test (num= (numV 1) (numV 1))
-				(boolV #t))
-	(test (num= (numV 2) (numV 3))
-				(boolV #f)))
+  (test (num= (numV 1) (numV 1))
+        (boolV #t))
+  (test (num= (numV 2) (numV 3))
+        (boolV #f)))
 
 ;; lookup ----------------------------------------
 (define (lookup [n : symbol] [env : Env]) : Value
   (cond
-   [(empty? env) (error 'lookup "free variable")]
-   [else (cond
-          [(symbol=? n (bind-name (first env)))
-           (bind-val (first env))]
-          [else (lookup n (rest env))])]))
+    [(empty? env) (error 'lookup "free variable")]
+    [else (cond
+            [(symbol=? n (bind-name (first env)))
+             (bind-val (first env))]
+            [else (lookup n (rest env))])]))
 
 (module+ test
   (test/exn (lookup 'x mt-env)
