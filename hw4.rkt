@@ -28,8 +28,7 @@
   [unboxC (arg : ExprC)]
   [setboxC (bx : ExprC)
            (val : ExprC)]
-  [beginC (l : ExprC)
-          (r : ExprC)])
+  [beginC (r : (listof ExprC))])
 
 (define-type Binding
   [bind (name : symbol)
@@ -83,9 +82,8 @@
     [(s-exp-match? '{set-box! ANY ANY} s)
      (setboxC (parse (second (s-exp->list s)))
               (parse (third (s-exp->list s))))]
-    [(s-exp-match? '{begin ANY ANY} s)
-     (beginC (parse (second (s-exp->list s)))
-             (parse (third (s-exp->list s))))]
+    [(s-exp-match? '{begin ANY ...} s)
+     (beginC (map parse (rest (s-exp->list s))))]
     [(s-exp-match? '{ANY ANY} s)
      (appC (parse (first (s-exp->list s)))
            (parse (second (s-exp->list s))))]
@@ -118,7 +116,7 @@
   (test (parse '{set-box! b 0})
         (setboxC (idC 'b) (numC 0)))
   (test (parse '{begin 1 2})
-        (beginC (numC 1) (numC 2)))
+        (beginC (list (numC 1) (numC 2))))
   (test/exn (parse '{{+ 1 2}})
             "invalid input"))
 
@@ -183,9 +181,16 @@
                                       (override-store (cell l v-v)
                                                       (remove-cell l sto-v)))]
                            [else (error 'interp "not a box")])))]
-    [beginC (l r)
-            (with [(v-l sto-l) (interp l env sto)]
-                  (interp r env sto-l))]))
+    [beginC (args)
+		(beginC-list args env sto)]))
+
+
+(define (beginC-list [e : (listof ExprC)] [env : Env] [sto : Store]) : Result
+	(if (empty? (rest e))
+		[(with [(v-l sto-l) (interp (first e) env sto)]
+			(interp (first e) env sto-l))]
+		[(with [(v-l sto-l) (interp (first e) env sto)]
+			(beginC-list (rest e) env sto-l))]))
 
 (define (remove-cell [l : Location] [sto : Store]) : Store
   (cond
