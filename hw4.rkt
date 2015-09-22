@@ -182,22 +182,31 @@
                                                       (remove-cell l sto-v)))]
                            [else (error 'interp "not a box")])))]
     [beginC (args)
-		(beginC-list args env sto)]))
+            (beginC-list args env sto)]))
+
 
 
 (define (beginC-list [e : (listof ExprC)] [env : Env] [sto : Store]) : Result
-	(if (empty? (rest e))
-		[(with [(v-l sto-l) (interp (first e) env sto)]
-			(interp (first e) env sto-l))]
-		[(with [(v-l sto-l) (interp (first e) env sto)]
-			(beginC-list (rest e) env sto-l))]))
+  (if (empty? (rest e))
+      (interp (first e) env sto)
+      (with [(v-l sto-l) (interp (first e) env sto)]
+            (beginC-list (rest e) env sto-l))))
 
 (define (remove-cell [l : Location] [sto : Store]) : Store
   (cond
     [(empty? sto) sto]
     [else (if (equal? l (cell-location (first sto)))
               (rest sto)
-              (remove-cell l (rest sto)))]))
+              (cons (first sto) (remove-cell l (rest sto))))]))
+
+
+(module+ test
+  (test (remove-cell 1 mt-store)
+        mt-store)
+  (test (remove-cell 2
+                     (override-store (cell 1 (numV 1))
+                                     (override-store (cell 2 (numV 2)) mt-store)))
+        (override-store (cell 1 (numV 1)) mt-store)))
 
 
 
@@ -265,6 +274,8 @@
         (v*s (numV 5)
              (override-store (cell 1 (numV 5))
                              mt-store)))
+  (test/exn (interp (parse '{unbox 5}) mt-env mt-store)
+            "not a box")
   (test (interp (parse '{set-box! {box 5} 6})
                 mt-env
                 mt-store)
@@ -314,7 +325,14 @@
                 mt-store)
         (v*s (numV 10)
              (override-store (cell 1 (numV 10))
-                             mt-store))))
+                             mt-store)))
+  (test/exn (interp (parse '{let {[b {box 1}]}
+                              {begin
+                                {set-box! 2 2}
+                                {unbox b}}})
+                    mt-env
+                    mt-store)
+            "not a box"))
 
 ;; num+ and num* ----------------------------------------
 (define (num-op [op : (number number -> number)] [l : Value] [r : Value]) : Value
